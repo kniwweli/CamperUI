@@ -3,6 +3,7 @@
 #include "ui_energy_history.h"
 #include "wifi_diagnostics.h"
 #include "buzzer.h"
+#include "ui_wled.h"
 #include <WiFi.h>
 #include "HWCDC.h"
 #include <time.h>
@@ -43,7 +44,8 @@ const TabMeta TAB_METAS[TAB_COUNT] = {
     {TAB_SETTINGS, "Einstellungen", MDI_TUNE},
     {TAB_TRUMA, "Truma", MDI_FIRE},
     {TAB_VICTRON, "Victron", "VE"},
-    {TAB_FRIDGE, "Kühlschrank", MDI_SNOWFLAKE}
+    {TAB_FRIDGE, "Kühlschrank", MDI_SNOWFLAKE},
+    {TAB_WLED,  "WLED",        MDI_LIGHTBULB}
 };
 
 static constexpr uint8_t PAGE_COUNT = TAB_COUNT;
@@ -483,6 +485,7 @@ void ui_init() {
             case TAB_SETTINGS: ui_build_settings(pages[i]); break;
             case TAB_TRUMA:    ui_build_truma(pages[i]); break;
             case TAB_FRIDGE:   ui_build_fridge(pages[i]); break;
+            case TAB_WLED:     ui_build_wled(pages[i]); break;
             default: break;
         }
     }

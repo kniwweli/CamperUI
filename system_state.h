@@ -19,7 +19,8 @@ enum TabId : uint8_t {
     TAB_TRUMA = 10,
     TAB_VICTRON = 11, // appended after upstream Truma; legacy RV3D IDs migrate on load
     TAB_FRIDGE = 12,  // Dometic RC10 CI-Bus Fridge
-    TAB_COUNT = 13
+    TAB_WLED  = 13,  // WLED LED Controller
+    TAB_COUNT = 14
 };
 
 enum HeaterType : uint8_t {
@@ -109,6 +110,7 @@ struct SystemState {
     String wifi_ssid;
     String wifi_pass;
     String vanpi_ip;
+    String wled_ip;   // WLED controller IP (empty = disabled)
     
     // Menu / Navigation Customization (Persisted)
     uint8_t tab_order[TAB_COUNT];
@@ -273,6 +275,13 @@ struct SystemState {
     char fridge_error[32];
     uint32_t fridge_last_update;
     uint32_t fridge_hold_until;
+
+    // WLED runtime state
+    bool    wled_on  = false;
+    uint8_t wled_r   = 255;
+    uint8_t wled_g   = 180;
+    uint8_t wled_b   = 80;
+    uint8_t wled_bri = 128;
 
     // Inclinometer / Leveling
     float pitch_angle;

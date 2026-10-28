@@ -672,6 +672,11 @@ static const char SETTINGS_HTML[] PROGMEM = R"rawliteral(
             <input type="text" id="vanpi_ip" placeholder="192.168.1.xxx">
             <div class="subtext">IP des VanPi Systems für Port 1880 REST API</div>
           </div>
+          <div class="field">
+            <label class="label">WLED IP</label>
+            <input type="text" id="wled_ip" placeholder="192.168.1.xxx">
+            <div class="subtext">IP des WLED Controllers (leer = Tab deaktiviert)</div>
+          </div>
         </div>
       </div>
 
@@ -724,7 +729,7 @@ static const char SETTINGS_HTML[] PROGMEM = R"rawliteral(
           <div class="toggle-row" style="margin-top:12px;">
             <div class="toggle-info">
               <div class="toggle-title">Screensaver</div>
-              <div class="toggle-desc">Zeigt große Uhrzeit &amp; Restlaufzeit in Dunkelrot nach Timeout</div>
+              <div class="toggle-desc">Zeigt große Uhrzeit &amp; Batteriestand nach Timeout</div>
             </div>
             <label class="switch">
               <input type="checkbox" id="screensaver_enabled">
@@ -1392,6 +1397,7 @@ static const char SETTINGS_HTML[] PROGMEM = R"rawliteral(
           document.getElementById('wifi_ssid').value = data.wifi_ssid || '';
           document.getElementById('wifi_pass').value = data.wifi_pass || '';
           document.getElementById('vanpi_ip').value = data.vanpi_ip || '';
+          document.getElementById('wled_ip').value  = data.wled_ip  || '';
 
           // Display
           document.getElementById('dark_mode').checked = !!data.dark_mode;
@@ -1729,6 +1735,7 @@ static const char SETTINGS_HTML[] PROGMEM = R"rawliteral(
         wifi_ssid: document.getElementById('wifi_ssid').value,
         wifi_pass: document.getElementById('wifi_pass').value,
         vanpi_ip: document.getElementById('vanpi_ip').value,
+        wled_ip:  document.getElementById('wled_ip').value,
 
         dark_mode: document.getElementById('dark_mode').checked,
         debug_mode: document.getElementById('debug_mode').checked,
