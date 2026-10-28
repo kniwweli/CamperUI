@@ -74,7 +74,6 @@ static void cb_slider_white(lv_event_t *e) {
 void ui_build_wled(lv_obj_t *parent) {
     ui_wled_reset();
     ui_setup_tab_page(parent);
-    lv_obj_clear_flag(parent, LV_OBJ_FLAG_SCROLLABLE);
 
     // ── Card 1: Power ───────────────────────────────────────────────────────
     lv_obj_t *card_pwr = ui_create_card(parent, 440, 76);
@@ -189,7 +188,7 @@ void ui_build_wled(lv_obj_t *parent) {
     lv_obj_set_style_text_font(lbl_no_ip, &lv_font_montserrat_14, 0);
     lv_obj_set_style_text_color(lbl_no_ip, ui_theme_muted(), 0);
     lv_obj_set_style_text_align(lbl_no_ip, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_align(lbl_no_ip, LV_ALIGN_CENTER, 0, 60);
+    lv_obj_set_pos(lbl_no_ip, 60, 150);
     lv_obj_add_flag(lbl_no_ip, LV_OBJ_FLAG_HIDDEN);
 
     ui_update_wled();
