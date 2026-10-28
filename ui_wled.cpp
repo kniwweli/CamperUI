@@ -3,11 +3,13 @@
 #include "wled_client.h"
 #include "system_state.h"
 
-static lv_obj_t *btn_power   = nullptr;
-static lv_obj_t *lbl_power   = nullptr;
-static lv_obj_t *slider_bri  = nullptr;
-static lv_obj_t *lbl_bri     = nullptr;
-static lv_obj_t *lbl_no_ip   = nullptr;
+static lv_obj_t *btn_power    = nullptr;
+static lv_obj_t *lbl_power    = nullptr;
+static lv_obj_t *slider_bri   = nullptr;
+static lv_obj_t *lbl_bri      = nullptr;
+static lv_obj_t *slider_white = nullptr;
+static lv_obj_t *lbl_white    = nullptr;
+static lv_obj_t *lbl_no_ip    = nullptr;
 
 // 8 preset colors: name, R, G, B
 static const struct { const char *name; uint8_t r, g, b; } PRESETS[] = {
@@ -24,11 +26,13 @@ static constexpr int PRESET_COUNT = 8;
 static lv_obj_t *btn_preset[PRESET_COUNT] = {};
 
 void ui_wled_reset(void) {
-    btn_power  = nullptr;
-    lbl_power  = nullptr;
-    slider_bri = nullptr;
-    lbl_bri    = nullptr;
-    lbl_no_ip  = nullptr;
+    btn_power    = nullptr;
+    lbl_power    = nullptr;
+    slider_bri   = nullptr;
+    lbl_bri      = nullptr;
+    slider_white = nullptr;
+    lbl_white    = nullptr;
+    lbl_no_ip    = nullptr;
     for (int i = 0; i < PRESET_COUNT; ++i) btn_preset[i] = nullptr;
 }
 
@@ -45,8 +49,9 @@ static void cb_preset(lv_event_t *e) {
     state.wled_r = PRESETS[idx].r;
     state.wled_g = PRESETS[idx].g;
     state.wled_b = PRESETS[idx].b;
+    state.wled_w = 0;
     state.wled_on = true;
-    wled_set_state(true, state.wled_r, state.wled_g, state.wled_b, state.wled_bri);
+    wled_set_state(true, state.wled_r, state.wled_g, state.wled_b, 0, state.wled_bri);
     ui_update_wled();
 }
 
@@ -54,6 +59,13 @@ static void cb_slider_bri(lv_event_t *e) {
     lv_obj_t *sl = (lv_obj_t *)lv_event_get_target(e);
     state.wled_bri = (uint8_t)lv_slider_get_value(sl);
     wled_set_brightness(state.wled_bri);
+    ui_update_wled();
+}
+
+static void cb_slider_white(lv_event_t *e) {
+    lv_obj_t *sl = (lv_obj_t *)lv_event_get_target(e);
+    state.wled_w = (uint8_t)lv_slider_get_value(sl);
+    wled_set_white(state.wled_w);
     ui_update_wled();
 }
 
@@ -123,8 +135,8 @@ void ui_build_wled(lv_obj_t *parent) {
         lv_obj_center(lbl);
     }
 
-    // ── Card 3: Brightness ──────────────────────────────────────────────────
-    lv_obj_t *card_bri = ui_create_card(parent, 440, 80);
+    // ── Card 3: Brightness + White ──────────────────────────────────────────
+    lv_obj_t *card_bri = ui_create_card(parent, 440, 150);
     lv_obj_set_pos(card_bri, 0, 274);
     lv_obj_clear_flag(card_bri, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_style_pad_all(card_bri, 10, 0);
@@ -137,7 +149,7 @@ void ui_build_wled(lv_obj_t *parent) {
 
     slider_bri = lv_slider_create(card_bri);
     lv_obj_set_size(slider_bri, 380, 28);
-    lv_obj_set_pos(slider_bri, 0, 30);
+    lv_obj_set_pos(slider_bri, 0, 20);
     lv_slider_set_range(slider_bri, 1, 255);
     lv_slider_set_value(slider_bri, state.wled_bri, LV_ANIM_OFF);
     lv_obj_set_style_bg_color(slider_bri, ui_theme_track(), LV_PART_MAIN);
@@ -148,7 +160,28 @@ void ui_build_wled(lv_obj_t *parent) {
     lbl_bri = lv_label_create(card_bri);
     lv_obj_set_style_text_font(lbl_bri, &lv_font_montserrat_12, 0);
     lv_obj_set_style_text_color(lbl_bri, ui_theme_muted(), 0);
-    lv_obj_set_pos(lbl_bri, 386, 34);
+    lv_obj_set_pos(lbl_bri, 386, 24);
+
+    lv_obj_t *lbl_white_title = lv_label_create(card_bri);
+    lv_label_set_text(lbl_white_title, "WEISSKANAL");
+    lv_obj_set_style_text_font(lbl_white_title, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_color(lbl_white_title, ui_theme_muted(), 0);
+    lv_obj_set_pos(lbl_white_title, 4, 60);
+
+    slider_white = lv_slider_create(card_bri);
+    lv_obj_set_size(slider_white, 380, 28);
+    lv_obj_set_pos(slider_white, 0, 78);
+    lv_slider_set_range(slider_white, 0, 255);
+    lv_slider_set_value(slider_white, state.wled_w, LV_ANIM_OFF);
+    lv_obj_set_style_bg_color(slider_white, ui_theme_track(), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(slider_white, lv_color_make(255, 255, 200), LV_PART_INDICATOR);
+    lv_obj_set_style_bg_color(slider_white, ui_theme_text(), LV_PART_KNOB);
+    lv_obj_add_event_cb(slider_white, cb_slider_white, LV_EVENT_VALUE_CHANGED, nullptr);
+
+    lbl_white = lv_label_create(card_bri);
+    lv_obj_set_style_text_font(lbl_white, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_color(lbl_white, ui_theme_muted(), 0);
+    lv_obj_set_pos(lbl_white, 386, 82);
 
     // No-IP warning (hidden by default)
     lbl_no_ip = lv_label_create(parent);
@@ -214,5 +247,15 @@ void ui_update_wled(void) {
         char buf[8];
         snprintf(buf, sizeof(buf), "%d%%", (int)(state.wled_bri * 100 / 255));
         ui_label_set_text_if_changed(lbl_bri, buf);
+    }
+
+    // White channel
+    if (slider_white) {
+        lv_slider_set_value(slider_white, state.wled_w, LV_ANIM_OFF);
+    }
+    if (lbl_white) {
+        char buf[8];
+        snprintf(buf, sizeof(buf), "%d%%", (int)(state.wled_w * 100 / 255));
+        ui_label_set_text_if_changed(lbl_white, buf);
     }
 }

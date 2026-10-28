@@ -281,6 +281,7 @@ struct SystemState {
     uint8_t wled_r   = 255;
     uint8_t wled_g   = 180;
     uint8_t wled_b   = 80;
+    uint8_t wled_w   = 0;
     uint8_t wled_bri = 128;
 
     // Inclinometer / Leveling

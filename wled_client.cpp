@@ -16,9 +16,9 @@ void wled_set_power(bool on) {
     wled_post(on ? "{\"on\":true}" : "{\"on\":false}");
 }
 
-void wled_set_color(uint8_t r, uint8_t g, uint8_t b) {
-    char buf[64];
-    snprintf(buf, sizeof(buf), "{\"on\":true,\"seg\":[{\"col\":[[%d,%d,%d]]}]}", r, g, b);
+void wled_set_color(uint8_t r, uint8_t g, uint8_t b, uint8_t w) {
+    char buf[72];
+    snprintf(buf, sizeof(buf), "{\"on\":true,\"seg\":[{\"col\":[[%d,%d,%d,%d]]}]}", r, g, b, w);
     wled_post(buf);
 }
 
@@ -28,10 +28,16 @@ void wled_set_brightness(uint8_t bri) {
     wled_post(buf);
 }
 
-void wled_set_state(bool on, uint8_t r, uint8_t g, uint8_t b, uint8_t bri) {
-    char buf[96];
+void wled_set_white(uint8_t w) {
+    char buf[32];
+    snprintf(buf, sizeof(buf), "{\"seg\":[{\"col\":[[0,0,0,%d]]}]}", w);
+    wled_post(buf);
+}
+
+void wled_set_state(bool on, uint8_t r, uint8_t g, uint8_t b, uint8_t w, uint8_t bri) {
+    char buf[104];
     snprintf(buf, sizeof(buf),
-        "{\"on\":%s,\"bri\":%d,\"seg\":[{\"col\":[[%d,%d,%d]]}]}",
-        on ? "true" : "false", bri, r, g, b);
+        "{\"on\":%s,\"bri\":%d,\"seg\":[{\"col\":[[%d,%d,%d,%d]]}]}",
+        on ? "true" : "false", bri, r, g, b, w);
     wled_post(buf);
 }
