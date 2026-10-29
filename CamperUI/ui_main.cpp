@@ -46,7 +46,7 @@ const TabMeta TAB_METAS[TAB_COUNT] = {
     {TAB_VICTRON, "Victron", "VE"},
     {TAB_FRIDGE, "Kühlschrank", MDI_SNOWFLAKE},
     {TAB_WLED,  "WLED",        MDI_LIGHTBULB},
-    {TAB_GPS,   "GPS",         "GPS"}
+    {TAB_GPS,   "GPS",         MDI_SATELLITE}
 };
 
 static constexpr uint8_t PAGE_COUNT = TAB_COUNT;
