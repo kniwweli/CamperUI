@@ -97,6 +97,7 @@ static lv_obj_t *lbl_wifi_scan;
 static lv_obj_t *ta_wifi_pass;
 static lv_obj_t *password_eye_label, *wifi_status_label;
 static lv_obj_t *ta_mqtt_ip;
+static lv_obj_t *ta_wled_ip;
 static lv_obj_t *dd_out_temp = NULL;
 static lv_obj_t *dd_in_temp = NULL;
 static lv_obj_t *dd_cust_temp1 = NULL;
@@ -405,6 +406,9 @@ static void save_settings_cb(lv_event_t * e) {
         state.wifi_pass = new_pass;
         if (ta_mqtt_ip) {
             state.vanpi_ip = String(lv_textarea_get_text(ta_mqtt_ip));
+        }
+        if (ta_wled_ip) {
+            state.wled_ip = String(lv_textarea_get_text(ta_wled_ip));
         }
     }
     
@@ -747,9 +751,25 @@ void ui_settings_screen_init() {
     lv_obj_align(ta_mqtt_ip, LV_ALIGN_TOP_LEFT, 0, 162);
     lv_obj_add_event_cb(ta_mqtt_ip, ta_event_cb, LV_EVENT_ALL, NULL);
     
-    // Row 4: WiFi Status Info
+    // Row 4: WLED IP
+    lv_obj_t *l_wled = lv_label_create(t_net);
+    lv_label_set_text(l_wled, "WLED IP");
+    lv_obj_set_style_text_font(l_wled, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_color(l_wled, lv_color_hex(UI_COLOR_PRIMARY), 0);
+    lv_obj_align(l_wled, LV_ALIGN_TOP_LEFT, 0, 218);
+
+    ta_wled_ip = lv_textarea_create(t_net);
+    lv_textarea_set_one_line(ta_wled_ip, true);
+    lv_textarea_set_text(ta_wled_ip, state.wled_ip.c_str());
+    lv_textarea_set_placeholder_text(ta_wled_ip, "IP-Adresse des WLED Controllers");
+    lv_obj_set_size(ta_wled_ip, 440, 44);
+    lv_obj_set_style_text_font(ta_wled_ip, &lv_font_montserrat_14, 0);
+    lv_obj_align(ta_wled_ip, LV_ALIGN_TOP_LEFT, 0, 244);
+    lv_obj_add_event_cb(ta_wled_ip, ta_event_cb, LV_EVENT_ALL, NULL);
+
+    // Row 5: WiFi Status Info
     wifi_status_label = lv_label_create(t_net);
-    lv_obj_set_pos(wifi_status_label, 0, 218);
+    lv_obj_set_pos(wifi_status_label, 0, 300);
     lv_obj_set_width(wifi_status_label, 440);
     lv_obj_set_style_text_font(wifi_status_label, &lv_font_montserrat_12, 0);
     lv_label_set_long_mode(wifi_status_label, LV_LABEL_LONG_WRAP);
