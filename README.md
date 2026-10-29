@@ -259,6 +259,7 @@ CamperUI/
 ├── ui_climate.cpp          # Tab 3: Thermostat & Standheizung
 ├── ui_switches.cpp         # Tab 0 & 4: Dimmer & Schalter
 ├── ui_level.cpp            # Tab 5: Wasserwaage & 4-Rad Keilassistent
+├── ui_gps.cpp              # GPS: Position, Fix-Status und native Kartenansicht
 ├── ui_settings.cpp         # Tab 6: Systemeinstellungen & Kalibrierung
 ├── web_ota.cpp / .h        # Web-Server für OTA-Updates & Web-Terminal Endpunkte
 ├── web_terminal_html.h     # Eigenständiges Dark-Theme Web-Terminal UI

@@ -777,14 +777,37 @@ static void parse_dometic_json(const char *payload) {
     }
 }
 
-// GET /position_sensor/?request=true -> { "x_angle": float|str, "y_angle": float|str }
+// GET /position_sensor/?request=true -> level angles plus optional GPS fields.
+// Accepted GPS names: latitude/longitude or lat/lon. This keeps older VanPi
+// position payloads fully compatible.
 static void parse_position_json(const char *payload) {
-    StaticJsonDocument<512> doc;
+    StaticJsonDocument<768> doc;
     if (deserializeJson(doc, payload)) return;
 
     StateLockGuard lock;
     if (doc.containsKey("x_angle")) state.roll_angle  = jsonFloat(doc["x_angle"]);
     if (doc.containsKey("y_angle")) state.pitch_angle = jsonFloat(doc["y_angle"]);
+
+    JsonVariant lat = doc["latitude"];
+    JsonVariant lon = doc["longitude"];
+    if (lat.isNull()) lat = doc["lat"];
+    if (lon.isNull()) lon = doc["lon"];
+    if (!lat.isNull() && !lon.isNull()) {
+        const double new_lat = lat.as<double>();
+        const double new_lon = lon.as<double>();
+        if (new_lat >= -90.0 && new_lat <= 90.0 && new_lon >= -180.0 && new_lon <= 180.0 &&
+            (fabs(new_lat) > 0.000001 || fabs(new_lon) > 0.000001)) {
+            state.gps_latitude = new_lat;
+            state.gps_longitude = new_lon;
+            state.gps_fix_valid = true;
+            state.gps_updated_ms = millis();
+        }
+    }
+    if (doc.containsKey("accuracy")) state.gps_accuracy_m = jsonFloat(doc["accuracy"]);
+    else if (doc.containsKey("accuracy_m")) state.gps_accuracy_m = jsonFloat(doc["accuracy_m"]);
+    if (doc.containsKey("speed_kmh")) state.gps_speed_kmh = jsonFloat(doc["speed_kmh"]);
+    else if (doc.containsKey("speed")) state.gps_speed_kmh = jsonFloat(doc["speed"]);
+    if (doc.containsKey("heading")) state.gps_heading_deg = jsonFloat(doc["heading"]);
 }
 
 // GET /info -> {"VanPi_Ctrl":"v2.1.0","install_date":"07/28/2026, 17:31:01","current_date":"14/10/2026, 18:30:35","uptime":"...","ttgo":"7d, 14h"}

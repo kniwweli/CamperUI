@@ -20,7 +20,8 @@ enum TabId : uint8_t {
     TAB_VICTRON = 11, // appended after upstream Truma; legacy RV3D IDs migrate on load
     TAB_FRIDGE = 12,  // Dometic RC10 CI-Bus Fridge
     TAB_WLED  = 13,  // WLED LED Controller
-    TAB_COUNT = 14
+    TAB_GPS   = 14,  // GPS position and map
+    TAB_COUNT = 15
 };
 
 enum HeaterType : uint8_t {
@@ -202,6 +203,15 @@ struct SystemState {
     bool vanpi_connected;
     String vanpi_current_date; // "14/10/2026, 18:30:35"
     String time_to_go;         // "7d, 14h" from /info ttgo
+
+    // GPS / navigation telemetry from VanPi /position_sensor
+    double gps_latitude;
+    double gps_longitude;
+    float gps_accuracy_m;
+    float gps_speed_kmh;
+    float gps_heading_deg;
+    uint32_t gps_updated_ms;
+    bool gps_fix_valid;
     
 
     // Power

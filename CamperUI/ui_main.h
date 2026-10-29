@@ -149,6 +149,7 @@ void ui_update_fridge_tab();
 void ui_update_switches_tab();
 void ui_update_dimmers_tab();
 void ui_update_level_tab();
+void ui_update_gps_tab();
 void ui_update_settings_tab();
 
 // Anim Triggers
@@ -175,6 +176,8 @@ void ui_fridge_reset(void);
 void ui_build_switches(lv_obj_t *parent);
 void ui_build_dimmers(lv_obj_t *parent);
 void ui_build_level(lv_obj_t *parent);
+void ui_build_gps(lv_obj_t *parent);
+void ui_gps_reset();
 void ui_build_settings(lv_obj_t *parent);
 
 void ui_build_maxxfan(lv_obj_t *parent);

@@ -169,7 +169,7 @@ void state_init() {
     const size_t saved_order_bytes=r_order;
     r_order = rv_migrate_tab_order(state.tab_order, r_order, legacy_rv_tabs);
     if (r_order == TAB_COUNT - 1) {
-        state.tab_order[TAB_COUNT - 1] = TAB_FRIDGE;
+        state.tab_order[TAB_COUNT - 1] = TAB_GPS;
         r_order = sizeof(state.tab_order);
     }
     if (r_order != sizeof(state.tab_order)) {
@@ -192,7 +192,7 @@ void state_init() {
     size_t r_en = prefs.getBytes("tab_en", state.tab_enabled, sizeof(state.tab_enabled));
     r_en = rv_migrate_tab_visibility(state.tab_enabled, r_en, legacy_rv_tabs);
     if (r_en == TAB_COUNT - 1) {
-        state.tab_enabled[TAB_FRIDGE] = false;
+        state.tab_enabled[TAB_GPS] = true;
         r_en = sizeof(state.tab_enabled);
     }
     if (r_en != sizeof(state.tab_enabled)) {
@@ -535,4 +535,3 @@ void state_set_wrelay_locked(int idx, bool locked) {
     prefs.putBool(key, locked);
     display_request_resync();
 }
-
