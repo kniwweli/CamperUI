@@ -267,7 +267,7 @@ void ui_build_home(lv_obj_t *parent) {
     lv_obj_set_style_radius(emer_btn, ui_radius_button(), 0);
     lv_obj_set_style_border_width(emer_btn, 0, 0);
     lv_obj_t *emer_lbl = lv_label_create(emer_btn);
-    lv_label_set_text(emer_lbl, LV_SYMBOL_WARNING " NOTFALL — 5 Sek. halten");
+    lv_label_set_text(emer_lbl, LV_SYMBOL_WARNING " NOTFALL  |  5 Sek. halten");
     lv_obj_set_style_text_font(emer_lbl, &lv_font_montserrat_16, 0);
     lv_obj_set_style_text_color(emer_lbl, lv_color_hex(0xFFFFFF), 0);
     lv_obj_align(emer_lbl, LV_ALIGN_CENTER, 0, -8);
