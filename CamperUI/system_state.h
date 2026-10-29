@@ -20,7 +20,8 @@ enum TabId : uint8_t {
     TAB_VICTRON = 11, // appended after upstream Truma; legacy RV3D IDs migrate on load
     TAB_FRIDGE = 12,  // Dometic RC10 CI-Bus Fridge
     TAB_WLED  = 13,  // WLED LED Controller
-    TAB_COUNT = 14
+    TAB_GPS   = 14,  // GPS position and map
+    TAB_COUNT = 15
 };
 
 enum HeaterType : uint8_t {
@@ -111,7 +112,7 @@ struct SystemState {
     String wifi_pass;
     String vanpi_ip;
     String wled_ip;   // WLED controller IP (empty = disabled)
-    
+
     // Menu / Navigation Customization (Persisted)
     uint8_t tab_order[TAB_COUNT];
     bool tab_enabled[TAB_COUNT];
@@ -123,6 +124,8 @@ struct SystemState {
     bool battery_icon_mode; // true = icon, false = percent
     bool buzzer_enabled;    // Touch-tone / haptic buzzer feedback
     bool screensaver_enabled; // true = display screensaver with 1% brightness on timeout
+    bool emergency_btn_enabled; // Notfallknopf auf Home-Screen (5s halten zum Auslösen)
+    uint8_t emergency_relay;    // Relais-Nummer (1-basiert) die der Notfallknopf schaltet
     int screensaver_brightness; // 1-100 (backlight brightness in %, default 5%)
     
     // Limits & Capacities
@@ -178,13 +181,17 @@ struct SystemState {
     bool heater_temp_buttons; // true: show round +/- buttons next to temperature arc
     
     // Custom Names
-    String switch_names[8];
-    String dimmer_names[8];
+    String switch_names[16];
+    String dimmer_names[10];
 
     // WiFi Relays (Persisted)
     bool show_wrelay;
     bool wrelay_visible[8];
     String wrelay_names[8];
+
+    // Hardware Extensions (Persisted)
+    bool show_relay_ext;   // out-x-in Pro adds Relais 9-16
+    bool dimmy_pro;        // Dimmy Pro uses channels 8-15
 
     // Firmware Update / Web OTA (Volatile)
     bool web_ota_active;
@@ -198,6 +205,15 @@ struct SystemState {
     bool vanpi_connected;
     String vanpi_current_date; // "14/10/2026, 18:30:35"
     String time_to_go;         // "7d, 14h" from /info ttgo
+
+    // GPS / navigation telemetry from VanPi /position_sensor
+    double gps_latitude;
+    double gps_longitude;
+    float gps_accuracy_m;
+    float gps_speed_kmh;
+    float gps_heading_deg;
+    uint32_t gps_updated_ms;
+    bool gps_fix_valid;
     
 
     // Power
@@ -222,8 +238,8 @@ struct SystemState {
     uint8_t solar_fields; // watts=1, amps=2, volts=4
     uint16_t temp_fields;
     uint8_t tank_fields;
-    uint8_t relay_fields;
-    uint8_t dimmer_fields;
+    uint16_t relay_fields;
+    uint16_t dimmer_fields;
     bool data_is_demo; // source of the received fields, not the requested mode
 
     // Water
@@ -285,12 +301,12 @@ struct SystemState {
     uint8_t wled_bri = 128;
 
     // WLED dynamic lists (loaded on demand via "Von WLED laden")
-    String  wled_effects_opts;           // newline-separated effect names; index == fx id
+    String  wled_effects_opts;
     int     wled_fx_count     = 0;
-    int     wled_fx           = 0;       // currently selected effect (fx id = dropdown index)
+    int     wled_fx           = 0;
     bool    wled_effects_loaded = false;
-    String  wled_presets_opts;           // newline-separated preset names
-    int     wled_preset_ids[32];         // maps dropdown index → WLED preset id
+    String  wled_presets_opts;
+    int     wled_preset_ids[32];
     int     wled_preset_count = 0;
     bool    wled_presets_loaded = false;
 
@@ -301,22 +317,22 @@ struct SystemState {
     bool debug_mode;
 
     // Switches & Dimmers
-    bool switch_state[8];
-    bool switch_locked[8];
-    int dimmer_val[8]; // 0-100%
+    bool switch_state[16];
+    bool switch_locked[16];
+    int dimmer_val[10]; // 0-100%
 
     // Local-interaction hold-off (millis timestamps, not persisted):
     // while millis() < *_hold_until, polled values are ignored so the
     // remote state does not fight with a value the user is just changing.
-    uint32_t dimmer_hold_until[8];
-    uint32_t relay_hold_until[8];
+    uint32_t dimmer_hold_until[10];
+    uint32_t relay_hold_until[16];
     uint32_t heater_hold_until;
 
     // Visibility and roles
-    bool switch_visible[8];
-    bool dimmer_visible[8];
-    int pump_relay; // -1 for none, 0-7 for relays, 8-15 for wrelays
-    int drain_relay; // -1 for none, 0-7 for relays, 8-15 for wrelays
+    bool switch_visible[16];
+    bool dimmer_visible[10];
+    int pump_relay; // -1 for none, 0-15 for relays, 16-23 for wrelays
+    int drain_relay; // -1 for none, 0-15 for relays, 16-23 for wrelays
 
     // WiFi Relays (Volatile State)
     bool wrelay_state[8];

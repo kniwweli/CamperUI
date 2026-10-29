@@ -89,6 +89,8 @@ void state_init() {
     state.battery_icon_mode = prefs.getBool("bat_icn_md", true);
     state.buzzer_enabled = prefs.getBool("buzzer_en", true);
     state.screensaver_enabled = prefs.getBool("scrsave_en", false);
+    state.emergency_btn_enabled = prefs.getBool("emer_btn_en", false);
+    state.emergency_relay = constrain(prefs.getUChar("emer_relay", 8), 1, 16);
     state.screensaver_brightness = constrain(prefs.getInt("scrsave_brt", 5), 1, 100);
     state.debug_mode = prefs.getBool("dbg_sim", true);
 
@@ -169,7 +171,7 @@ void state_init() {
     const size_t saved_order_bytes=r_order;
     r_order = rv_migrate_tab_order(state.tab_order, r_order, legacy_rv_tabs);
     if (r_order == TAB_COUNT - 1) {
-        state.tab_order[TAB_COUNT - 1] = TAB_FRIDGE;
+        state.tab_order[TAB_COUNT - 1] = TAB_GPS;
         r_order = sizeof(state.tab_order);
     }
     if (r_order != sizeof(state.tab_order)) {
@@ -192,7 +194,7 @@ void state_init() {
     size_t r_en = prefs.getBytes("tab_en", state.tab_enabled, sizeof(state.tab_enabled));
     r_en = rv_migrate_tab_visibility(state.tab_enabled, r_en, legacy_rv_tabs);
     if (r_en == TAB_COUNT - 1) {
-        state.tab_enabled[TAB_FRIDGE] = false;
+        state.tab_enabled[TAB_GPS] = true;
         r_en = sizeof(state.tab_enabled);
     }
     if (r_en != sizeof(state.tab_enabled)) {
@@ -221,25 +223,33 @@ void state_init() {
         state.tank_names[i] = prefs.getString(key_nm, def_name);
     }
 
-    for (int i = 0; i < 8; i++) {
-        char key_sw[16], key_dim[16];
-        char key_sw_vis[16], key_dim_vis[16];
-        char key_sw_lock[16], key_wr_lock[16];
+    for (int i = 0; i < 16; i++) {
+        char key_sw[16], key_sw_vis[16], key_sw_lock[16];
         sprintf(key_sw, "sw%d_nm", i);
-        sprintf(key_dim, "dim%d_nm", i);
         sprintf(key_sw_vis, "sw%d_vis", i);
-        sprintf(key_dim_vis, "dim%d_vis", i);
         sprintf(key_sw_lock, "sw%d_lock", i);
-        sprintf(key_wr_lock, "wr%d_lock", i);
         state.switch_names[i] = prefs.getString(key_sw, "CH " + String(i + 1));
-        state.dimmer_names[i] = prefs.getString(key_dim, "PWM " + String(i + 1));
         state.switch_visible[i] = prefs.getBool(key_sw_vis, true);
-        state.dimmer_visible[i] = prefs.getBool(key_dim_vis, true);
         state.switch_locked[i] = prefs.getBool(key_sw_lock, false);
-        state.wrelay_locked[i] = prefs.getBool(key_wr_lock, false);
+    }
+    for (int i = 0; i < 10; i++) {
+        char key_dim[16], key_dim_vis[16], key_wr_lock[16];
+        sprintf(key_dim, "dim%d_nm", i);
+        sprintf(key_dim_vis, "dim%d_vis", i);
+        String def_dim = (i < 8) ? ("PWM " + String(i + 1)) : ("RGBW " + String(i - 7));
+        state.dimmer_names[i] = prefs.getString(key_dim, def_dim);
+        state.dimmer_visible[i] = prefs.getBool(key_dim_vis, true);
+        if (i < 8) {
+            sprintf(key_wr_lock, "wr%d_lock", i);
+            state.wrelay_locked[i] = prefs.getBool(key_wr_lock, false);
+        }
     }
     state.pump_relay = prefs.getInt("pump_relay", -1);
     state.drain_relay = prefs.getInt("drain_relay", -1);
+    if (rv_cfg_version < 3) {
+        if (state.pump_relay >= 8 && state.pump_relay <= 15) state.pump_relay += 8;
+        if (state.drain_relay >= 8 && state.drain_relay <= 15) state.drain_relay += 8;
+    }
 
     // Initialize defaults for volatile data
     state.wifi_connected = false;
@@ -337,11 +347,13 @@ void state_init() {
     state.pitch_angle = 0.0f;
     state.roll_angle = 0.0f;
 
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 16; i++) {
         state.switch_state[i] = false;
+        state.relay_hold_until[i] = 0;
+    }
+    for (int i = 0; i < 10; i++) {
         state.dimmer_val[i] = 0;
         state.dimmer_hold_until[i] = 0;
-        state.relay_hold_until[i] = 0;
     }
     state.heater_hold_until = 0;
 
@@ -349,6 +361,8 @@ void state_init() {
     state.time_to_go = "";
 
     state.show_wrelay = prefs.getBool("show_wrelay", false);
+    state.show_relay_ext = prefs.getBool("show_r_ext", false);
+    state.dimmy_pro = prefs.getBool("dimmy_pro", false);
     for (int i = 0; i < 8; i++) {
         char key_w_nm[16], key_w_vis[16];
         sprintf(key_w_nm, "wr%d_nm", i);
@@ -459,28 +473,34 @@ void state_save() {
         prefs.putInt(key_un, state.tank_unit[i]);
     }
     
-    for (int i = 0; i < 8; i++) {
-        char key_sw[16], key_dim[16];
-        char key_sw_vis[16], key_dim_vis[16];
+    for (int i = 0; i < 16; i++) {
+        char key_sw[16], key_sw_vis[16];
         sprintf(key_sw, "sw%d_nm", i);
-        sprintf(key_dim, "dim%d_nm", i);
         sprintf(key_sw_vis, "sw%d_vis", i);
-        sprintf(key_dim_vis, "dim%d_vis", i);
         put_string_if_changed(key_sw, state.switch_names[i]);
-        put_string_if_changed(key_dim, state.dimmer_names[i]);
         prefs.putBool(key_sw_vis, state.switch_visible[i]);
+    }
+    for (int i = 0; i < 10; i++) {
+        char key_dim[16], key_dim_vis[16];
+        sprintf(key_dim, "dim%d_nm", i);
+        sprintf(key_dim_vis, "dim%d_vis", i);
+        put_string_if_changed(key_dim, state.dimmer_names[i]);
         prefs.putBool(key_dim_vis, state.dimmer_visible[i]);
     }
     prefs.putInt("pump_relay", state.pump_relay);
     prefs.putInt("drain_relay", state.drain_relay);
     prefs.putInt("heater_type", state.heater_type);
     prefs.putBool("ht_btns", state.heater_temp_buttons);
-    prefs.putUChar("rv_cfg_v",2);
+    prefs.putUChar("rv_cfg_v", 3);
 
     prefs.putBool("scrsave_en", state.screensaver_enabled);
     prefs.putInt("scrsave_brt", state.screensaver_brightness);
+    prefs.putBool("emer_btn_en", state.emergency_btn_enabled);
+    prefs.putUChar("emer_relay", state.emergency_relay);
 
     prefs.putBool("show_wrelay", state.show_wrelay);
+    prefs.putBool("show_r_ext", state.show_relay_ext);
+    prefs.putBool("dimmy_pro", state.dimmy_pro);
     for (int i = 0; i < 8; i++) {
         char key_w_nm[16], key_w_vis[16];
         sprintf(key_w_nm, "wr%d_nm", i);
@@ -501,7 +521,7 @@ void state_save_theme() {
 }
 
 void state_set_switch_locked(int idx, bool locked) {
-    if (idx < 0 || idx >= 8) return;
+    if (idx < 0 || idx >= 16) return;
     StateLockGuard lock;
     state.switch_locked[idx] = locked;
     char key[16];
@@ -519,4 +539,3 @@ void state_set_wrelay_locked(int idx, bool locked) {
     prefs.putBool(key, locked);
     display_request_resync();
 }
-

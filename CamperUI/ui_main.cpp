@@ -1,9 +1,9 @@
 #include "ui_main.h"
+#include "ui_wled.h"
 #include "ui_victron.h"
 #include "ui_energy_history.h"
 #include "wifi_diagnostics.h"
 #include "buzzer.h"
-#include "ui_wled.h"
 #include <WiFi.h>
 #include "HWCDC.h"
 #include <time.h>
@@ -45,7 +45,8 @@ const TabMeta TAB_METAS[TAB_COUNT] = {
     {TAB_TRUMA, "Truma", MDI_FIRE},
     {TAB_VICTRON, "Victron", "VE"},
     {TAB_FRIDGE, "Kühlschrank", MDI_SNOWFLAKE},
-    {TAB_WLED,  "WLED",        MDI_LIGHTBULB}
+    {TAB_WLED,  "WLED",        MDI_LIGHTBULB},
+    {TAB_GPS,   "GPS",         MDI_SATELLITE}
 };
 
 static constexpr uint8_t PAGE_COUNT = TAB_COUNT;
@@ -304,6 +305,7 @@ static void rebuild_ui(void *) {
     ui_climate_reset();
     ui_truma_reset();
     ui_level_reset();
+    ui_gps_reset();
     ui_water_reset();
     ui_switches_reset();
     ui_fridge_reset();
@@ -482,6 +484,7 @@ void ui_init() {
             case TAB_MAXXFAN:  ui_build_maxxfan(pages[i]); break;
             case TAB_SWITCHES: ui_build_switches(pages[i]); break;
             case TAB_LEVEL:    ui_build_level(pages[i]); break;
+            case TAB_GPS:      ui_build_gps(pages[i]); break;
             case TAB_SETTINGS: ui_build_settings(pages[i]); break;
             case TAB_TRUMA:    ui_build_truma(pages[i]); break;
             case TAB_FRIDGE:   ui_build_fridge(pages[i]); break;
@@ -604,6 +607,26 @@ void ui_rebuild_power(void) {
     }
 }
 
+void ui_rebuild_dimmers(void) {
+    if (pages[TAB_DIMMERS]) {
+        lv_obj_clean(pages[TAB_DIMMERS]);
+        ui_build_dimmers(pages[TAB_DIMMERS]);
+        if (active_page == TAB_DIMMERS) {
+            ui_update_dimmers_tab();
+        }
+    }
+}
+
+void ui_rebuild_switches(void) {
+    if (pages[TAB_SWITCHES]) {
+        lv_obj_clean(pages[TAB_SWITCHES]);
+        ui_build_switches(pages[TAB_SWITCHES]);
+        if (active_page == TAB_SWITCHES) {
+            ui_update_switches_tab();
+        }
+    }
+}
+
 void ui_update_visible_page() {
     if (ui_energy_history_active()) { ui_energy_history_update(); return; }
     if (lv_scr_act() != scr_main) return;
@@ -618,6 +641,7 @@ void ui_update_visible_page() {
         case TAB_TEMPS: ui_update_temps_tab(); break;
         case TAB_SWITCHES: ui_update_switches_tab(); break;
         case TAB_LEVEL: ui_update_level_tab(); break;
+        case TAB_GPS: ui_update_gps_tab(); break;
         case TAB_MAXXFAN: ui_update_maxxfan(); break;
         case TAB_TRUMA: ui_update_truma_tab(); break;
         case TAB_FRIDGE: ui_update_fridge(); break;

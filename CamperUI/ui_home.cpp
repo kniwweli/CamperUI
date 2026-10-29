@@ -12,6 +12,10 @@ lv_obj_t *favorites[2], *favorite_text[2], *temperatures[3], *temp_name[3], *tem
 lv_obj_t *battery, *bat_title, *bat_power, *bat_detail, *starter;
 lv_obj_t *solar, *solar_power, *solar_detail, *water, *water_title, *water_value, *water_bar;
 lv_obj_t *multiplus,*mp_power;
+lv_obj_t *emer_btn = nullptr, *emer_bar = nullptr;
+lv_timer_t *emer_timer = nullptr;
+uint32_t emer_press_start = 0;
+bool emer_triggered = false;
 HomeMpActivity mp_activity;
 uint8_t remembered_dimmer[8] = {};
 lv_obj_t *label(lv_obj_t *parent, const char *text, int x, int y, const lv_font_t *font) {
@@ -27,6 +31,26 @@ bool update_mp_activity() {
     mp_activity.update(state.home_show_victron&&state.victron_enabled,state.debug_mode,
         gx.demo==state.debug_mode&&victron_fresh(gx,GX_MODE),gx.values[GX_MODE].valid?(int)gx.values[GX_MODE].value:0);
     return before!=mp_activity.visible;
+}
+void emer_timer_cb(lv_timer_t *) {
+    if (!emer_btn || !lv_obj_is_valid(emer_btn)) return;
+    bool pressed = lv_obj_has_state(emer_btn, LV_STATE_PRESSED);
+    if (pressed) {
+        if (emer_press_start == 0) emer_press_start = millis();
+        uint32_t elapsed = millis() - emer_press_start;
+        if (emer_bar) lv_bar_set_value(emer_bar, (int)constrain((long)elapsed * 100 / 5000, 0L, 100L), LV_ANIM_OFF);
+        if (!emer_triggered && elapsed >= 5000) {
+            emer_triggered = true;
+            http_publish_switch(state.emergency_relay - 1, true);
+            buzzer_beep_force(500);
+        }
+    } else {
+        if (emer_press_start != 0) {
+            emer_press_start = 0;
+            emer_triggered = false;
+            if (emer_bar) lv_bar_set_value(emer_bar, 0, LV_ANIM_OFF);
+        }
+    }
 }
 void layout() {
     if (!root) return;
@@ -66,6 +90,7 @@ void layout() {
     visible(water, state.home_show_water && !state.home_show_victron); lv_obj_set_pos(water, 0, y);
     if (state.home_show_victron && !multiplus) multiplus=ui_build_victron_home(root);
     if (multiplus) { visible(multiplus,state.home_show_victron);lv_obj_set_pos(multiplus,0,y); }
+    if (emer_btn) visible(emer_btn, state.emergency_btn_enabled);
     lv_obj_update_layout(root);
     lv_obj_scroll_to_y(root, lv_obj_get_scroll_y(root), LV_ANIM_OFF);
 }
@@ -106,7 +131,13 @@ void value(lv_obj_t *obj, const char *format, float number, bool ready) {
     else ui_label_set_text_if_changed(obj, "--");
 }
 }
-void ui_home_reset() { root = multiplus = mp_power = nullptr; mp_activity=HomeMpActivity(); ui_victron_home_reset(); }
+void ui_home_reset() {
+    root = multiplus = mp_power = emer_btn = emer_bar = nullptr;
+    mp_activity = HomeMpActivity();
+    ui_victron_home_reset();
+    if (emer_timer) { lv_timer_del(emer_timer); emer_timer = nullptr; }
+    emer_press_start = 0; emer_triggered = false;
+}
 void ui_home_layout_changed() { layout(); }
 void ui_update_home() {
     if (!root) return;
@@ -227,5 +258,29 @@ void ui_build_home(lv_obj_t *parent) {
     lv_obj_set_style_bg_color(water_bar, ui_theme_tank(), LV_PART_INDICATOR);
     for (auto card : temperatures) link(card, state.tab_enabled[TAB_TEMPS] ? TAB_TEMPS : (state.tab_enabled[TAB_TRUMA] ? TAB_TRUMA : TAB_CLIMATE));
     link(battery, TAB_POWER); link(solar, TAB_POWER); link(water, TAB_WATER);
+
+    // Notfallknopf (5s halten zum Auslösen)
+    emer_btn = lv_btn_create(parent);
+    lv_obj_set_size(emer_btn, 464, 52);
+    lv_obj_set_style_bg_color(emer_btn, lv_color_hex(UI_COLOR_DANGER), 0);
+    lv_obj_set_style_bg_color(emer_btn, lv_color_hex(0xAA0000), LV_STATE_PRESSED);
+    lv_obj_set_style_radius(emer_btn, ui_radius_button(), 0);
+    lv_obj_set_style_border_width(emer_btn, 0, 0);
+    lv_obj_t *emer_lbl = lv_label_create(emer_btn);
+    lv_label_set_text(emer_lbl, LV_SYMBOL_WARNING " NOTFALL  |  5 Sek. halten");
+    lv_obj_set_style_text_font(emer_lbl, &lv_font_montserrat_16, 0);
+    lv_obj_set_style_text_color(emer_lbl, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_align(emer_lbl, LV_ALIGN_CENTER, 0, -8);
+    emer_bar = lv_bar_create(emer_btn);
+    lv_obj_set_size(emer_bar, 430, 6);
+    lv_obj_align(emer_bar, LV_ALIGN_BOTTOM_MID, 0, -6);
+    lv_bar_set_range(emer_bar, 0, 100);
+    lv_bar_set_value(emer_bar, 0, LV_ANIM_OFF);
+    lv_obj_set_style_bg_color(emer_bar, lv_color_hex(0x880000), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(emer_bar, lv_color_hex(0xFFFFFF), LV_PART_INDICATOR);
+    lv_obj_set_style_radius(emer_bar, 3, LV_PART_MAIN);
+    lv_obj_set_style_radius(emer_bar, 3, LV_PART_INDICATOR);
+    if (!emer_timer) emer_timer = lv_timer_create(emer_timer_cb, 50, nullptr);
+
     update_mp_activity();layout();
 }

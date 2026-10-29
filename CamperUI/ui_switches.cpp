@@ -2,13 +2,13 @@
 #include "http_handler.h"
 #include "buzzer.h"
 
-static lv_obj_t *switches[8];
-static lv_obj_t *lbl_switch_name[8];
+static lv_obj_t *switches[16];
+static lv_obj_t *lbl_switch_name[16];
 static lv_obj_t *w_switches[8];
 static lv_obj_t *lbl_wswitch_name[8];
-static lv_obj_t *dimmers[8];
-static lv_obj_t *lbl_dim_name[8];
-static lv_obj_t *lbl_dim_pct[8];
+static lv_obj_t *dimmers[10];
+static lv_obj_t *lbl_dim_name[10];
+static lv_obj_t *lbl_dim_pct[10];
 
 // Dynamic dimmer bar color:
 // At 0%: very low saturation (~12%), muted soft warm tone
@@ -41,11 +41,11 @@ static void update_dimmer_visuals(int idx) {
     }
 }
 
-static int last_switch_state[8] = {-1, -1, -1, -1, -1, -1, -1, -1};
+static int last_switch_state[16] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
 static int last_wswitch_state[8] = {-1, -1, -1, -1, -1, -1, -1, -1};
 
 static void update_switch_visual(int idx, bool force = false) {
-    if (!switches[idx]) return;
+    if (idx < 0 || idx >= 16 || !switches[idx]) return;
     bool on = state.switch_state[idx];
     if (!force && last_switch_state[idx] == (int)on) return;
     last_switch_state[idx] = (int)on;
@@ -90,14 +90,14 @@ static bool switches_animating = false;
 static void switches_anim_cb(void *var, int32_t ratio);
 
 static const uint32_t SWITCH_LOCK_HOLD_MS = 2000;
-static uint32_t sw_press_start[8] = {0};
-static bool sw_hold_triggered[8] = {false};
+static uint32_t sw_press_start[16] = {0};
+static bool sw_hold_triggered[16] = {false};
 static uint32_t wr_press_start[8] = {0};
 static bool wr_hold_triggered[8] = {false};
 
 static void relay_btn_event_cb(lv_event_t * e) {
     int idx = (int)(intptr_t)lv_event_get_user_data(e);
-    if (idx < 0 || idx >= 8) return;
+    if (idx < 0 || idx >= 16) return;
     lv_event_code_t code = lv_event_get_code(e);
 
     if (code == LV_EVENT_PRESSED) {
@@ -176,11 +176,11 @@ static void wrelay_btn_event_cb(lv_event_t * e) {
 // ==========================================
 // Dimmer Animation (Tab-Load Smooth Fill)
 // ==========================================
-static bool dimmer_animating[8] = {false};
+static bool dimmer_animating[10] = {false};
 
 static void dimmer_anim_cb(void *var, int32_t val) {
     int idx = (int)(intptr_t)var;
-    if (idx < 0 || idx >= 8 || !dimmers[idx]) return;
+    if (idx < 0 || idx >= 10 || !dimmers[idx]) return;
     lv_slider_set_value(dimmers[idx], val, LV_ANIM_OFF);
     lv_color_t color = dimmer_color_for_val(val);
     lv_obj_set_style_bg_color(dimmers[idx], color, LV_PART_INDICATOR);
@@ -197,14 +197,15 @@ static void dimmer_anim_cb(void *var, int32_t val) {
 
 static void dimmer_anim_ready_cb(lv_anim_t *a) {
     int idx = (int)(intptr_t)a->var;
-    if (idx >= 0 && idx < 8) {
+    if (idx >= 0 && idx < 10) {
         dimmer_animating[idx] = false;
         update_dimmer_visuals(idx);
     }
 }
 
 void ui_trigger_dimmers_anim() {
-    for (int i = 0; i < 8; i++) {
+    int max_dim = state.dimmy_pro ? 10 : 8;
+    for (int i = 0; i < max_dim; i++) {
         if (!dimmers[i]) continue;
         lv_anim_del((void*)(intptr_t)i, dimmer_anim_cb);
         if (state.dimmer_val[i] > 0) {
@@ -250,7 +251,7 @@ static void switches_anim_cb(void *var, int32_t ratio) {
     lv_color_t cur_border = lv_color_mix(border_target, border_start, r);
     lv_color_t cur_text = lv_color_mix(text_target, text_start, r);
 
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 16; i++) {
         if (state.switch_visible[i] && switches[i] && state.switch_state[i]) {
             lv_obj_set_style_bg_color(switches[i], cur_bg, 0);
             lv_obj_set_style_border_color(switches[i], cur_border, 0);
@@ -271,8 +272,10 @@ static void switches_anim_cb(void *var, int32_t ratio) {
 static void switches_anim_ready_cb(lv_anim_t *a) {
     (void)a;
     switches_animating = false;
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 16; i++) {
         if (state.switch_visible[i] && switches[i]) update_switch_visual(i, true);
+    }
+    for (int i = 0; i < 8; i++) {
         if (state.show_wrelay && state.wrelay_visible[i] && w_switches[i]) update_wswitch_visual(i, true);
     }
 }
@@ -280,8 +283,10 @@ static void switches_anim_ready_cb(lv_anim_t *a) {
 void ui_trigger_switches_anim() {
     lv_anim_del(NULL, switches_anim_cb);
     bool has_active = false;
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 16; i++) {
         if (state.switch_visible[i] && switches[i] && state.switch_state[i]) has_active = true;
+    }
+    for (int i = 0; i < 8; i++) {
         if (state.show_wrelay && state.wrelay_visible[i] && w_switches[i] && state.wrelay_state[i]) has_active = true;
     }
     if (!has_active) {
@@ -290,7 +295,7 @@ void ui_trigger_switches_anim() {
     }
 
     switches_animating = true;
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 16; i++) {
         if (state.switch_visible[i] && switches[i] && state.switch_state[i]) {
             lv_obj_set_style_bg_color(switches[i], ui_theme_card(), 0);
             lv_obj_set_style_border_color(switches[i], ui_theme_border(), 0);
@@ -298,6 +303,8 @@ void ui_trigger_switches_anim() {
                 lv_obj_set_style_text_color(lbl_switch_name[i], ui_theme_btn_text(), 0);
             }
         }
+    }
+    for (int i = 0; i < 8; i++) {
         if (state.show_wrelay && state.wrelay_visible[i] && w_switches[i] && state.wrelay_state[i]) {
             lv_obj_set_style_bg_color(w_switches[i], ui_theme_card(), 0);
             lv_obj_set_style_border_color(w_switches[i], ui_theme_border(), 0);
@@ -318,11 +325,12 @@ void ui_trigger_switches_anim() {
     lv_anim_start(&a);
 }
 
-static uint32_t dimmer_last_live_pub[8] = {0};
-static int dimmer_last_pub_val[8] = {-1, -1, -1, -1, -1, -1, -1, -1};
+static uint32_t dimmer_last_live_pub[10] = {0};
+static int dimmer_last_pub_val[10] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
 
 static void dimmer_slider_event_cb(lv_event_t * e) {
     int idx = (int)(intptr_t)lv_event_get_user_data(e);
+    if (idx < 0 || idx >= 10) return;
     lv_obj_t *slider = lv_event_get_target(e);
     lv_event_code_t code = lv_event_get_code(e);
     
@@ -360,7 +368,7 @@ static void dimmer_slider_event_cb(lv_event_t * e) {
 }
 
 void ui_update_switches_tab() {
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 16; i++) {
         if (state.switch_visible[i] && switches[i]) {
             if (!switches_animating) update_switch_visual(i);
             if (lbl_switch_name[i]) {
@@ -373,6 +381,8 @@ void ui_update_switches_tab() {
                 ui_label_set_text_if_changed(lbl_switch_name[i], buf);
             }
         }
+    }
+    for (int i = 0; i < 8; i++) {
         if (state.show_wrelay && state.wrelay_visible[i] && w_switches[i]) {
             if (!switches_animating) update_wswitch_visual(i);
             if (lbl_wswitch_name[i]) {
@@ -389,7 +399,8 @@ void ui_update_switches_tab() {
 }
 
 void ui_update_dimmers_tab() {
-    for (int i = 0; i < 8; i++) {
+    int max_dim = state.dimmy_pro ? 10 : 8;
+    for (int i = 0; i < max_dim; i++) {
         if (dimmers[i]) {
             // Never move a slider under the user's finger or during entry animation
             if (lv_obj_has_state(dimmers[i], LV_STATE_PRESSED)) continue;
@@ -406,20 +417,24 @@ void ui_update_dimmers_tab() {
 }
 
 void ui_switches_reset() {
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 16; i++) {
         switches[i] = nullptr;
         lbl_switch_name[i] = nullptr;
+        last_switch_state[i] = -1;
+        sw_press_start[i] = 0;
+        sw_hold_triggered[i] = false;
+    }
+    for (int i = 0; i < 8; i++) {
         w_switches[i] = nullptr;
         lbl_wswitch_name[i] = nullptr;
+        last_wswitch_state[i] = -1;
+        wr_press_start[i] = 0;
+        wr_hold_triggered[i] = false;
+    }
+    for (int i = 0; i < 10; i++) {
         dimmers[i] = nullptr;
         lbl_dim_name[i] = nullptr;
         lbl_dim_pct[i] = nullptr;
-        last_switch_state[i] = -1;
-        last_wswitch_state[i] = -1;
-        sw_press_start[i] = 0;
-        sw_hold_triggered[i] = false;
-        wr_press_start[i] = 0;
-        wr_hold_triggered[i] = false;
         dimmer_last_live_pub[i] = 0;
         dimmer_last_pub_val[i] = -1;
     }
@@ -451,10 +466,11 @@ void ui_build_switches(lv_obj_t *parent) {
     lv_obj_clear_flag(cont_sw, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_align(cont_sw, LV_ALIGN_TOP_MID, 0, 0);
 
-    for (int i = 0; i < 8; i++) {
+    int max_relays = state.show_relay_ext ? 16 : 8;
+    for (int i = 0; i < 16; i++) {
         switches[i] = NULL;
         lbl_switch_name[i] = NULL;
-        if (!state.switch_visible[i]) continue;
+        if (i >= max_relays || !state.switch_visible[i]) continue;
 
         // 2 buttons per row: (440 - 16) / 2 = 212px wide, 94px high.
         // 3 rows = 3 * 94 + 2 * 12 = 306px <= 360px (no scrollbar for <= 6 buttons)
@@ -524,11 +540,12 @@ void ui_build_dimmers(lv_obj_t *parent) {
     lv_obj_set_flex_flow(parent, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_style_pad_row(parent, 10, 0);
 
-    for (int i = 0; i < 8; i++) {
+    int max_dim = state.dimmy_pro ? 10 : 8;
+    for (int i = 0; i < 10; i++) {
         dimmers[i] = NULL;
         lbl_dim_name[i] = NULL;
         lbl_dim_pct[i] = NULL;
-        if (!state.dimmer_visible[i]) continue;
+        if (i >= max_dim || !state.dimmer_visible[i]) continue;
 
         // Modern Home Assistant Style Card: Width 440px, Height 80px
         // 4 cards * 80px + 3 gaps * 10px = 350px <= 360px (Exactly 4 dimmers fit without scrollbar!)

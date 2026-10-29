@@ -106,10 +106,17 @@ void http_fetch_names() {
 }
 
 // Static lookup tables to prevent String heap allocations in parsing loops
-static const char* const RELAY_KEYS[8]       = {"Relay1", "Relay2", "Relay3", "Relay4", "Relay5", "Relay6", "Relay7", "Relay8"};
+static const char* const RELAY_KEYS[16]      = {
+    "Relay1", "Relay2", "Relay3", "Relay4", "Relay5", "Relay6", "Relay7", "Relay8",
+    "Relay9", "Relay10", "Relay11", "Relay12", "Relay13", "Relay14", "Relay15", "Relay16"
+};
 static const char* const WIFIRELAIS_KEYS[8]   = {"WifiRelay1", "WifiRelay2", "WifiRelay3", "WifiRelay4", "WifiRelay5", "WifiRelay6", "WifiRelay7", "WifiRelay8"};
 static const char* const WRELAY_KEYS_ALT[8]   = {"wrelay1", "wrelay2", "wrelay3", "wrelay4", "wrelay5", "wrelay6", "wrelay7", "wrelay8"};
 static const char* const DIMMER_KEYS[8]      = {"dimmer1", "dimmer2", "dimmer3", "dimmer4", "dimmer5", "dimmer6", "dimmer7", "dimmer8"};
+static const char* const DIMMER_PRO_KEYS[10] = {
+    "dimmer8", "dimmer9", "dimmer10", "dimmer11", "dimmer12", "dimmer13", "dimmer14", "dimmer15",
+    "rgbw1", "rgbw2"
+};
 static const char* const LEVEL_KEYS[4]       = {"level1", "level2", "level3", "level4"};
 static const char* const TEMP_KEYS[4]        = {"temp1", "temp2", "temp3", "temp4"};
 
@@ -248,11 +255,12 @@ static void parse_mppt_json(const char *payload) {
 
 // GET /relay -> { "Relay1": { "state": bool, "name": str, ... }, "Relay2": ... }
 static void parse_relay_json(const char *payload) {
-    StaticJsonDocument<1024> doc;
+    StaticJsonDocument<2048> doc;
     if (deserializeJson(doc, payload)) return;
 
     StateLockGuard lock;
-    for (int i = 0; i < 8; i++) {
+    int max_r = state.show_relay_ext ? 16 : 8;
+    for (int i = 0; i < max_r; i++) {
         const char *key = RELAY_KEYS[i];
         if (!doc.containsKey(key)) continue;
         JsonObject r = doc[key];
@@ -323,16 +331,29 @@ static void parse_wrelay_json(const char *payload) {
 
 // GET /dimmer -> { "dimmer1": { "state": int(0-100), "name": str, ... }, "dimmer2": ... }
 static void parse_dimmer_json(const char *payload) {
-    StaticJsonDocument<1024> doc;
+    StaticJsonDocument<2048> doc;
     if (deserializeJson(doc, payload)) return;
 
     StateLockGuard lock;
-    for (int i = 0; i < 8; i++) {
-        const char *key = DIMMER_KEYS[i];
+    int max_dim = state.dimmy_pro ? 10 : 8;
+    const char* const* keys = state.dimmy_pro ? DIMMER_PRO_KEYS : DIMMER_KEYS;
+    for (int i = 0; i < max_dim; i++) {
+        const char *key = keys[i];
         if (!doc.containsKey(key)) continue;
         JsonObject d = doc[key];
         if (d.containsKey("state") && (int32_t)(millis() - state.dimmer_hold_until[i]) >= 0) {
-            state.dimmer_val[i] = constrain(jsonInt(d["state"]), 0, 100);
+            int bri = 0;
+            if (d["state"].is<JsonObject>()) {
+                JsonObject st = d["state"].as<JsonObject>();
+                if (st.containsKey("bri")) {
+                    bri = jsonInt(st["bri"]);
+                } else if (st.containsKey("white")) {
+                    bri = jsonInt(st["white"]);
+                }
+            } else {
+                bri = jsonInt(d["state"]);
+            }
+            state.dimmer_val[i] = constrain(bri, 0, 100);
             state.dimmer_fields |= (1 << i);
         }
         if (d.containsKey("name")) {
@@ -756,14 +777,37 @@ static void parse_dometic_json(const char *payload) {
     }
 }
 
-// GET /position_sensor/?request=true -> { "x_angle": float|str, "y_angle": float|str }
+// GET /position_sensor/?request=true -> level angles plus optional GPS fields.
+// Accepted GPS names: latitude/longitude or lat/lon. This keeps older VanPi
+// position payloads fully compatible.
 static void parse_position_json(const char *payload) {
-    StaticJsonDocument<512> doc;
+    StaticJsonDocument<768> doc;
     if (deserializeJson(doc, payload)) return;
 
     StateLockGuard lock;
     if (doc.containsKey("x_angle")) state.roll_angle  = jsonFloat(doc["x_angle"]);
     if (doc.containsKey("y_angle")) state.pitch_angle = jsonFloat(doc["y_angle"]);
+
+    JsonVariant lat = doc["latitude"];
+    JsonVariant lon = doc["longitude"];
+    if (lat.isNull()) lat = doc["lat"];
+    if (lon.isNull()) lon = doc["lon"];
+    if (!lat.isNull() && !lon.isNull()) {
+        const double new_lat = lat.as<double>();
+        const double new_lon = lon.as<double>();
+        if (new_lat >= -90.0 && new_lat <= 90.0 && new_lon >= -180.0 && new_lon <= 180.0 &&
+            (fabs(new_lat) > 0.000001 || fabs(new_lon) > 0.000001)) {
+            state.gps_latitude = new_lat;
+            state.gps_longitude = new_lon;
+            state.gps_fix_valid = true;
+            state.gps_updated_ms = millis();
+        }
+    }
+    if (doc.containsKey("accuracy")) state.gps_accuracy_m = jsonFloat(doc["accuracy"]);
+    else if (doc.containsKey("accuracy_m")) state.gps_accuracy_m = jsonFloat(doc["accuracy_m"]);
+    if (doc.containsKey("speed_kmh")) state.gps_speed_kmh = jsonFloat(doc["speed_kmh"]);
+    else if (doc.containsKey("speed")) state.gps_speed_kmh = jsonFloat(doc["speed"]);
+    if (doc.containsKey("heading")) state.gps_heading_deg = jsonFloat(doc["heading"]);
 }
 
 // GET /info -> {"VanPi_Ctrl":"v2.1.0","install_date":"07/28/2026, 17:31:01","current_date":"14/10/2026, 18:30:35","uptime":"...","ttgo":"7d, 14h"}
@@ -777,8 +821,13 @@ static void parse_info_json(const char *payload) {
         if (cd && strlen(cd) >= 19) {
             state.vanpi_current_date = cd;
             int d = 0, mo = 0, y = 0, h = 0, mi = 0, s = 0;
-            // Format: "14/10/2026, 18:30:35" (DD/MM/YYYY, HH:MM:SS)
-            if (sscanf(cd, "%d/%d/%d, %d:%d:%d", &d, &mo, &y, &h, &mi, &s) == 6) {
+            // Support Old Core (DD/MM/YYYY, HH:MM:SS) and CorePro (DD.MM.YYYY, HH:MM:SS)
+            int matched = sscanf(cd, "%d/%d/%d, %d:%d:%d", &d, &mo, &y, &h, &mi, &s);
+            if (matched < 6) matched = sscanf(cd, "%d.%d.%d, %d:%d:%d", &d, &mo, &y, &h, &mi, &s);
+            if (matched < 6) matched = sscanf(cd, "%d.%d.%d %d:%d:%d", &d, &mo, &y, &h, &mi, &s);
+            if (matched < 6) matched = sscanf(cd, "%d/%d/%d %d:%d:%d", &d, &mo, &y, &h, &mi, &s);
+            if (matched < 6 && sscanf(cd, "%d-%d-%d %d:%d:%d", &y, &mo, &d, &h, &mi, &s) == 6) matched = 6;
+            if (matched == 6) {
                 struct tm t = {};
                 t.tm_year = y - 1900;
                 t.tm_mon  = mo - 1;
@@ -994,9 +1043,13 @@ void http_loop() {
         state.heating_on = state.fan_on = false;
         for (int i = 0; i < TEMP_SOURCE_COUNT; ++i) { state.temp_sensors[i] = 0; state.temp_humidity[i] = 0.0f; state.temp_is_humidity[i] = false; }
         for (int i = 0; i < 4; ++i) state.tank_level[i] = 0;
-        for (int i = 0; i < 8; ++i) {
-            state.dimmer_hold_until[i] = state.relay_hold_until[i] = 0;
-            state.switch_state[i] = false; state.dimmer_val[i] = 0;
+        for (int i = 0; i < 16; ++i) {
+            state.relay_hold_until[i] = 0;
+            state.switch_state[i] = false;
+        }
+        for (int i = 0; i < 10; ++i) {
+            state.dimmer_hold_until[i] = 0;
+            state.dimmer_val[i] = 0;
         }
         demo_relays_seeded = demo_dimmers_seeded = false;
         shore_404_count = booster_404_count = 0;
@@ -1035,12 +1088,16 @@ void http_loop() {
                     break;
                 }
                 case 1: {
-                    const char *dummy = "{\"Relay1\":{\"state\":true,\"name\":\"Licht Bank\"},\"Relay2\":{\"state\":false,\"name\":\"Kuehlschrank\"},\"Relay3\":{\"state\":true,\"name\":\"Wasserpumpe\"},\"Relay4\":{\"state\":false,\"name\":\"Abwasserventil\"},\"Relay5\":{\"state\":false,\"name\":\"Relais 5\"},\"Relay6\":{\"state\":false,\"name\":\"Relais 6\"},\"Relay7\":{\"state\":false,\"name\":\"Relais 7\"},\"Relay8\":{\"state\":false,\"name\":\"Relais 8\"}}";
+                    const char *dummy = state.show_relay_ext ?
+                        "{\"Relay1\":{\"state\":true,\"name\":\"Licht Bank\"},\"Relay2\":{\"state\":false,\"name\":\"Kuehlschrank\"},\"Relay3\":{\"state\":true,\"name\":\"Wasserpumpe\"},\"Relay4\":{\"state\":false,\"name\":\"Abwasserventil\"},\"Relay5\":{\"state\":false,\"name\":\"Relais 5\"},\"Relay6\":{\"state\":false,\"name\":\"Relais 6\"},\"Relay7\":{\"state\":false,\"name\":\"Relais 7\"},\"Relay8\":{\"state\":false,\"name\":\"Relais 8\"},\"Relay9\":{\"state\":false,\"name\":\"Aussenlicht\"},\"Relay10\":{\"state\":false,\"name\":\"Heckgarage\"},\"Relay11\":{\"state\":false,\"name\":\"Relais 11\"},\"Relay12\":{\"state\":false,\"name\":\"Relais 12\"},\"Relay13\":{\"state\":false,\"name\":\"Relais 13\"},\"Relay14\":{\"state\":false,\"name\":\"Relais 14\"},\"Relay15\":{\"state\":false,\"name\":\"Relais 15\"},\"Relay16\":{\"state\":false,\"name\":\"Relais 16\"}}" :
+                        "{\"Relay1\":{\"state\":true,\"name\":\"Licht Bank\"},\"Relay2\":{\"state\":false,\"name\":\"Kuehlschrank\"},\"Relay3\":{\"state\":true,\"name\":\"Wasserpumpe\"},\"Relay4\":{\"state\":false,\"name\":\"Abwasserventil\"},\"Relay5\":{\"state\":false,\"name\":\"Relais 5\"},\"Relay6\":{\"state\":false,\"name\":\"Relais 6\"},\"Relay7\":{\"state\":false,\"name\":\"Relais 7\"},\"Relay8\":{\"state\":false,\"name\":\"Relais 8\"}}";
                     if (!demo_relays_seeded) { parse_relay_json(dummy); demo_relays_seeded = true; }
                     break;
                 }
                 case 2: {
-                    const char *dummy = "{\"dimmer1\":{\"state\":\"75\",\"name\":\"Deckenlampe\"},\"dimmer2\":{\"state\":\"40\",\"name\":\"Kueche\"},\"dimmer3\":{\"state\":\"0\",\"name\":\"Leselicht\"},\"dimmer4\":{\"state\":\"0\",\"name\":\"Dimmer 4\"},\"dimmer5\":{\"state\":\"0\",\"name\":\"Dimmer 5\"},\"dimmer6\":{\"state\":\"0\",\"name\":\"Dimmer 6\"},\"dimmer7\":{\"state\":\"0\",\"name\":\"Dimmer 7\"},\"dimmer8\":{\"state\":\"0\",\"name\":\"Dimmer 8\"}}";
+                    const char *dummy = state.dimmy_pro ?
+                        "{\"dimmer8\":{\"state\":75,\"name\":\"WC / Bad\"},\"dimmer9\":{\"state\":40,\"name\":\"Kueche\"},\"dimmer10\":{\"state\":0,\"name\":\"Tisch\"},\"dimmer11\":{\"state\":0,\"name\":\"Bett\"},\"dimmer12\":{\"state\":0,\"name\":\"Werkstatt\"},\"dimmer13\":{\"state\":0,\"name\":\"Regenrinne\"},\"dimmer14\":{\"state\":0,\"name\":\"Deckenlicht\"},\"dimmer15\":{\"state\":0,\"name\":\"Bodenlicht\"},\"rgbw1\":{\"state\":{\"rgb\":{\"r\":255,\"g\":255,\"b\":255},\"white\":0,\"bri\":80},\"name\":\"Markisenbeleuchtung\"},\"rgbw2\":{\"state\":{\"rgb\":{\"r\":255,\"g\":255,\"b\":255},\"white\":0,\"bri\":30},\"name\":\"Fahrerbereich\"}}" :
+                        "{\"dimmer1\":{\"state\":\"75\",\"name\":\"Deckenlampe\"},\"dimmer2\":{\"state\":\"40\",\"name\":\"Kueche\"},\"dimmer3\":{\"state\":\"0\",\"name\":\"Leselicht\"},\"dimmer4\":{\"state\":\"0\",\"name\":\"Dimmer 4\"},\"dimmer5\":{\"state\":\"0\",\"name\":\"Dimmer 5\"},\"dimmer6\":{\"state\":\"0\",\"name\":\"Dimmer 6\"},\"dimmer7\":{\"state\":\"0\",\"name\":\"Dimmer 7\"},\"dimmer8\":{\"state\":\"0\",\"name\":\"Dimmer 8\"}}";
                     if (!demo_dimmers_seeded) { parse_dimmer_json(dummy); demo_dimmers_seeded = true; }
                     break;
                 }
@@ -1273,7 +1330,8 @@ static void http_put(String endpoint) {
 static RelayClickFilter relay_click_filter;
 
 bool http_publish_switch(int index, bool on) {
-    if (index < 0 || index >= 8 || !relay_click_filter.accept(index, millis())) return false;
+    int max_r = state.show_relay_ext ? 16 : 8;
+    if (index < 0 || index >= max_r || !relay_click_filter.accept(index, millis())) return false;
     state.switch_state[index] = on;
     state.relay_hold_until[index] = millis() + 2000;
     char path[64];
@@ -1283,7 +1341,7 @@ bool http_publish_switch(int index, bool on) {
 }
 
 bool http_publish_wrelay(int index, bool on) {
-    if (index < 0 || index >= 8 || !relay_click_filter.accept(index + 8, millis())) return false;
+    if (index < 0 || index >= 8 || !relay_click_filter.accept(index + 16, millis())) return false;
     state.wrelay_state[index] = on;
     state.wrelay_hold_until[index] = millis() + 2000;
     char path[64];
@@ -1293,11 +1351,13 @@ bool http_publish_wrelay(int index, bool on) {
 }
 
 void http_publish_dimmer(int index, int val) {
-    if (index < 0 || index >= 8) return;
+    int max_dim = state.dimmy_pro ? 10 : 8;
+    if (index < 0 || index >= max_dim) return;
     val = constrain(val, 0, 100);
     state.dimmer_val[index] = val;
+    int ch = state.dimmy_pro ? (index + 8) : (index + 1);
     char path[64];
-    snprintf(path, sizeof(path), "/dimmer/%d/%d", index + 1, val);
+    snprintf(path, sizeof(path), "/dimmer/%d/%d", ch, val);
     queue_cmd(path);
 }
 

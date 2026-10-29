@@ -5,7 +5,7 @@
 #include "system_state.h"
 #include "ui_mdi_icons.h"
 #include "ui_fonts.h"
-#define CAMPERUI_VERSION "V1.9.0"
+#define CAMPERUI_VERSION "V1.9.1"
 
 #if !LV_MEM_CUSTOM && LV_MEM_SIZE < (512U * 1024U)
 #error "CamperUI needs config/lv_conf.h: copy it to Arduino/libraries/lv_conf.h (LV_MEM_SIZE >= 512 KiB)."
@@ -149,6 +149,7 @@ void ui_update_fridge_tab();
 void ui_update_switches_tab();
 void ui_update_dimmers_tab();
 void ui_update_level_tab();
+void ui_update_gps_tab();
 void ui_update_settings_tab();
 
 // Anim Triggers
@@ -164,6 +165,8 @@ void ui_build_power(lv_obj_t *parent);
 void ui_build_water(lv_obj_t *parent);
 void ui_rebuild_water(void);
 void ui_rebuild_power(void);
+void ui_rebuild_dimmers(void);
+void ui_rebuild_switches(void);
 void ui_build_climate(lv_obj_t *parent);
 void ui_build_truma(lv_obj_t *parent);
 void ui_truma_reset();
@@ -173,6 +176,8 @@ void ui_fridge_reset(void);
 void ui_build_switches(lv_obj_t *parent);
 void ui_build_dimmers(lv_obj_t *parent);
 void ui_build_level(lv_obj_t *parent);
+void ui_build_gps(lv_obj_t *parent);
+void ui_gps_reset();
 void ui_build_settings(lv_obj_t *parent);
 
 void ui_build_maxxfan(lv_obj_t *parent);
