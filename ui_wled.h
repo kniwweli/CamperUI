@@ -1,0 +1,7 @@
+#pragma once
+#include <lvgl.h>
+
+void ui_build_wled(lv_obj_t *parent);
+void ui_update_wled(void);
+void ui_wled_reset(void);
+void ui_wled_refresh_lists(void); // call after wled_fetch_effects/presets to repopulate dropdowns

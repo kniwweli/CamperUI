@@ -672,6 +672,11 @@ static const char SETTINGS_HTML[] PROGMEM = R"rawliteral(
             <input type="text" id="vanpi_ip" placeholder="192.168.1.xxx">
             <div class="subtext">IP des VanPi Systems für Port 1880 REST API</div>
           </div>
+          <div class="field">
+            <label class="label">WLED IP</label>
+            <input type="text" id="wled_ip" placeholder="192.168.1.xxx">
+            <div class="subtext">IP des WLED LED Controllers</div>
+          </div>
         </div>
       </div>
 
@@ -1412,6 +1417,7 @@ static const char SETTINGS_HTML[] PROGMEM = R"rawliteral(
           document.getElementById('wifi_ssid').value = data.wifi_ssid || '';
           document.getElementById('wifi_pass').value = data.wifi_pass || '';
           document.getElementById('vanpi_ip').value = data.vanpi_ip || '';
+          document.getElementById('wled_ip').value  = data.wled_ip  || '';
 
           // Display
           document.getElementById('dark_mode').checked = !!data.dark_mode;
@@ -1764,6 +1770,7 @@ static const char SETTINGS_HTML[] PROGMEM = R"rawliteral(
         wifi_ssid: document.getElementById('wifi_ssid').value,
         wifi_pass: document.getElementById('wifi_pass').value,
         vanpi_ip: document.getElementById('vanpi_ip').value,
+        wled_ip:  document.getElementById('wled_ip').value,
 
         dark_mode: document.getElementById('dark_mode').checked,
         debug_mode: document.getElementById('debug_mode').checked,

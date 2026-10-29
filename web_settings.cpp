@@ -28,6 +28,7 @@ void web_settings_register_routes(WebServer &server) {
             doc["wifi_ssid"] = state.wifi_ssid;
             doc["wifi_pass"] = state.wifi_pass;
             doc["vanpi_ip"] = state.vanpi_ip;
+            doc["wled_ip"]  = state.wled_ip;
 
             doc["dark_mode"] = state.dark_mode;
             doc["buzzer_enabled"] = state.buzzer_enabled;
@@ -250,6 +251,7 @@ void web_settings_register_routes(WebServer &server) {
                 if (p != state.wifi_pass) { state.wifi_pass = p; wifi_changed = true; }
             }
             if (doc["vanpi_ip"].is<const char*>()) state.vanpi_ip = doc["vanpi_ip"].as<String>();
+            if (doc["wled_ip"].is<const char*>())  state.wled_ip  = doc["wled_ip"].as<String>();
 
             if (doc["dark_mode"].is<bool>()) state.dark_mode = doc["dark_mode"].as<bool>();
             if (doc["buzzer_enabled"].is<bool>()) state.buzzer_enabled = doc["buzzer_enabled"].as<bool>();
