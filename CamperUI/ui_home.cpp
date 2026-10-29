@@ -41,7 +41,7 @@ void emer_timer_cb(lv_timer_t *) {
         if (emer_bar) lv_bar_set_value(emer_bar, (int)constrain((long)elapsed * 100 / 5000, 0L, 100L), LV_ANIM_OFF);
         if (!emer_triggered && elapsed >= 5000) {
             emer_triggered = true;
-            http_publish_switch(7, true);
+            http_publish_switch(state.emergency_relay - 1, true);
             buzzer_beep_force(500);
         }
     } else {

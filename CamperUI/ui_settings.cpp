@@ -996,6 +996,24 @@ void ui_settings_screen_init() {
     lv_obj_set_style_text_font(l_emer, &lv_font_montserrat_14, 0);
     lv_obj_align(l_emer, LV_ALIGN_TOP_LEFT, 288, 172);
 
+    // Notfallknopf Relay-Auswahl
+    lv_obj_t *l_emer_relay = lv_label_create(t_gen);
+    lv_label_set_text(l_emer_relay, "Relais:");
+    lv_obj_set_style_text_font(l_emer_relay, &lv_font_montserrat_14, 0);
+    lv_obj_align(l_emer_relay, LV_ALIGN_TOP_LEFT, 230, 210);
+    lv_obj_t *dd_emer_relay = lv_dropdown_create(t_gen);
+    lv_dropdown_set_options(dd_emer_relay,
+        "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16");
+    lv_dropdown_set_selected(dd_emer_relay, constrain(state.emergency_relay - 1, 0, 15));
+    lv_obj_set_size(dd_emer_relay, 80, 36);
+    lv_obj_set_style_text_font(dd_emer_relay, &lv_font_montserrat_14, 0);
+    lv_obj_align(dd_emer_relay, LV_ALIGN_TOP_LEFT, 290, 206);
+    lv_obj_add_event_cb(dd_emer_relay, [](lv_event_t *e) {
+        lv_obj_t *dd = lv_event_get_target(e);
+        state.emergency_relay = constrain((int)lv_dropdown_get_selected(dd) + 1, 1, 16);
+        state_save();
+    }, LV_EVENT_VALUE_CHANGED, NULL);
+
     // ==========================================
     // TAB 3: SICHTBARKEIT (ANZEIGE - GROSSE TOGGLE SWITCHES)
     // ==========================================

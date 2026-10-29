@@ -90,6 +90,7 @@ void state_init() {
     state.buzzer_enabled = prefs.getBool("buzzer_en", true);
     state.screensaver_enabled = prefs.getBool("scrsave_en", false);
     state.emergency_btn_enabled = prefs.getBool("emer_btn_en", false);
+    state.emergency_relay = constrain(prefs.getUChar("emer_relay", 8), 1, 16);
     state.screensaver_brightness = constrain(prefs.getInt("scrsave_brt", 5), 1, 100);
     state.debug_mode = prefs.getBool("dbg_sim", true);
 
@@ -495,6 +496,7 @@ void state_save() {
     prefs.putBool("scrsave_en", state.screensaver_enabled);
     prefs.putInt("scrsave_brt", state.screensaver_brightness);
     prefs.putBool("emer_btn_en", state.emergency_btn_enabled);
+    prefs.putUChar("emer_relay", state.emergency_relay);
 
     prefs.putBool("show_wrelay", state.show_wrelay);
     prefs.putBool("show_r_ext", state.show_relay_ext);
