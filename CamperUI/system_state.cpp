@@ -89,6 +89,7 @@ void state_init() {
     state.battery_icon_mode = prefs.getBool("bat_icn_md", true);
     state.buzzer_enabled = prefs.getBool("buzzer_en", true);
     state.screensaver_enabled = prefs.getBool("scrsave_en", false);
+    state.emergency_btn_enabled = prefs.getBool("emer_btn_en", false);
     state.screensaver_brightness = constrain(prefs.getInt("scrsave_brt", 5), 1, 100);
     state.debug_mode = prefs.getBool("dbg_sim", true);
 
@@ -493,6 +494,7 @@ void state_save() {
 
     prefs.putBool("scrsave_en", state.screensaver_enabled);
     prefs.putInt("scrsave_brt", state.screensaver_brightness);
+    prefs.putBool("emer_btn_en", state.emergency_btn_enabled);
 
     prefs.putBool("show_wrelay", state.show_wrelay);
     prefs.putBool("show_r_ext", state.show_relay_ext);

@@ -979,7 +979,23 @@ void ui_settings_screen_init() {
     lv_obj_add_event_cb(sl_scrsave_bri, [](lv_event_t * e) {
         state_save();
     }, LV_EVENT_RELEASED, NULL);
-    
+
+    // Notfallknopf Switch
+    lv_obj_t *sw_emer = lv_switch_create(t_gen);
+    lv_obj_set_size(sw_emer, 48, 26);
+    if (state.emergency_btn_enabled) lv_obj_add_state(sw_emer, LV_STATE_CHECKED);
+    lv_obj_align(sw_emer, LV_ALIGN_TOP_LEFT, 230, 168);
+    lv_obj_add_event_cb(sw_emer, [](lv_event_t *e) {
+        lv_obj_t *sw = lv_event_get_target(e);
+        state.emergency_btn_enabled = lv_obj_has_state(sw, LV_STATE_CHECKED);
+        state_save();
+        ui_home_layout_changed();
+    }, LV_EVENT_VALUE_CHANGED, NULL);
+    lv_obj_t *l_emer = lv_label_create(t_gen);
+    lv_label_set_text(l_emer, "Notfallknopf");
+    lv_obj_set_style_text_font(l_emer, &lv_font_montserrat_14, 0);
+    lv_obj_align(l_emer, LV_ALIGN_TOP_LEFT, 288, 172);
+
     // ==========================================
     // TAB 3: SICHTBARKEIT (ANZEIGE - GROSSE TOGGLE SWITCHES)
     // ==========================================

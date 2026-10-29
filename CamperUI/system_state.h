@@ -124,6 +124,7 @@ struct SystemState {
     bool battery_icon_mode; // true = icon, false = percent
     bool buzzer_enabled;    // Touch-tone / haptic buzzer feedback
     bool screensaver_enabled; // true = display screensaver with 1% brightness on timeout
+    bool emergency_btn_enabled; // Notfallknopf auf Home-Screen (5s halten zum Auslösen)
     int screensaver_brightness; // 1-100 (backlight brightness in %, default 5%)
     
     // Limits & Capacities
