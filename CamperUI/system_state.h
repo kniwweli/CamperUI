@@ -284,6 +284,16 @@ struct SystemState {
     uint8_t wled_w   = 0;
     uint8_t wled_bri = 128;
 
+    // WLED dynamic lists (loaded on demand via "Von WLED laden")
+    String  wled_effects_opts;           // newline-separated effect names; index == fx id
+    int     wled_fx_count     = 0;
+    int     wled_fx           = 0;       // currently selected effect (fx id = dropdown index)
+    bool    wled_effects_loaded = false;
+    String  wled_presets_opts;           // newline-separated preset names
+    int     wled_preset_ids[32];         // maps dropdown index → WLED preset id
+    int     wled_preset_count = 0;
+    bool    wled_presets_loaded = false;
+
     // Inclinometer / Leveling
     float pitch_angle;
     float roll_angle;

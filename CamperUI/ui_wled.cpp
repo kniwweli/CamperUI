@@ -10,6 +10,9 @@ static lv_obj_t *lbl_bri      = nullptr;
 static lv_obj_t *slider_white = nullptr;
 static lv_obj_t *lbl_white    = nullptr;
 static lv_obj_t *lbl_no_ip    = nullptr;
+static lv_obj_t *dd_effects   = nullptr;
+static lv_obj_t *dd_presets   = nullptr;
+static lv_obj_t *lbl_load_status = nullptr;
 
 // 8 preset colors: name, R, G, B
 static const struct { const char *name; uint8_t r, g, b; } PRESETS[] = {
@@ -33,6 +36,9 @@ void ui_wled_reset(void) {
     slider_white = nullptr;
     lbl_white    = nullptr;
     lbl_no_ip    = nullptr;
+    dd_effects   = nullptr;
+    dd_presets   = nullptr;
+    lbl_load_status = nullptr;
     for (int i = 0; i < PRESET_COUNT; ++i) btn_preset[i] = nullptr;
 }
 
@@ -67,6 +73,28 @@ static void cb_slider_white(lv_event_t *e) {
     state.wled_w = (uint8_t)lv_slider_get_value(sl);
     wled_set_white(state.wled_w);
     ui_update_wled();
+}
+
+static void cb_dd_effects(lv_event_t *e) {
+    if (!dd_effects) return;
+    int sel = (int)lv_dropdown_get_selected(dd_effects);
+    state.wled_fx = sel;
+    wled_set_effect(sel);
+}
+
+static void cb_dd_presets(lv_event_t *e) {
+    if (!dd_presets) return;
+    int sel = (int)lv_dropdown_get_selected(dd_presets);
+    if (sel < state.wled_preset_count) {
+        wled_set_preset(state.wled_preset_ids[sel]);
+    }
+}
+
+static void cb_load(lv_event_t *) {
+    if (lbl_load_status) lv_label_set_text(lbl_load_status, "Laden...");
+    wled_fetch_effects();
+    wled_fetch_presets();
+    ui_wled_refresh_lists();
 }
 
 // ─── builder ─────────────────────────────────────────────────────────────────
@@ -191,7 +219,93 @@ void ui_build_wled(lv_obj_t *parent) {
     lv_obj_set_pos(lbl_no_ip, 60, 150);
     lv_obj_add_flag(lbl_no_ip, LV_OBJ_FLAG_HIDDEN);
 
+    // ── Card 4: Effekte & Szenen ────────────────────────────────────────────
+    lv_obj_t *card_dyn = ui_create_card(parent, 440, 210);
+    lv_obj_set_pos(card_dyn, 0, 436);
+    lv_obj_clear_flag(card_dyn, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_pad_all(card_dyn, 10, 0);
+
+    // EFFEKTE label
+    lv_obj_t *lbl_fx_title = lv_label_create(card_dyn);
+    lv_label_set_text(lbl_fx_title, "EFFEKTE");
+    lv_obj_set_style_text_font(lbl_fx_title, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_color(lbl_fx_title, ui_theme_muted(), 0);
+    lv_obj_set_pos(lbl_fx_title, 4, 2);
+
+    dd_effects = lv_dropdown_create(card_dyn);
+    lv_obj_set_size(dd_effects, 420, 40);
+    lv_obj_set_pos(dd_effects, 0, 20);
+    lv_dropdown_set_options(dd_effects, state.wled_effects_loaded ? state.wled_effects_opts.c_str() : "(noch nicht geladen)");
+    lv_obj_set_style_text_font(dd_effects, &lv_font_montserrat_14, 0);
+    lv_obj_add_event_cb(dd_effects, cb_dd_effects, LV_EVENT_VALUE_CHANGED, nullptr);
+
+    // SZENEN label
+    lv_obj_t *lbl_ps_title = lv_label_create(card_dyn);
+    lv_label_set_text(lbl_ps_title, "SZENEN");
+    lv_obj_set_style_text_font(lbl_ps_title, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_color(lbl_ps_title, ui_theme_muted(), 0);
+    lv_obj_set_pos(lbl_ps_title, 4, 72);
+
+    dd_presets = lv_dropdown_create(card_dyn);
+    lv_obj_set_size(dd_presets, 420, 40);
+    lv_obj_set_pos(dd_presets, 0, 90);
+    lv_dropdown_set_options(dd_presets, state.wled_presets_loaded ? state.wled_presets_opts.c_str() : "(noch nicht geladen)");
+    lv_obj_set_style_text_font(dd_presets, &lv_font_montserrat_14, 0);
+    lv_obj_add_event_cb(dd_presets, cb_dd_presets, LV_EVENT_VALUE_CHANGED, nullptr);
+
+    // "Von WLED laden" button
+    lv_obj_t *btn_load = lv_btn_create(card_dyn);
+    lv_obj_set_size(btn_load, 240, 40);
+    lv_obj_set_pos(btn_load, 0, 142);
+    lv_obj_set_style_radius(btn_load, ui_radius_button(), 0);
+    lv_obj_set_style_border_width(btn_load, ui_border_width(), 0);
+    lv_obj_set_style_shadow_width(btn_load, 0, 0);
+    lv_obj_set_style_bg_color(btn_load, ui_theme_card(), 0);
+    lv_obj_set_style_border_color(btn_load, ui_theme_primary(), 0);
+    lv_obj_add_event_cb(btn_load, cb_load, LV_EVENT_CLICKED, nullptr);
+
+    lv_obj_t *lbl_load_btn = lv_label_create(btn_load);
+    lv_label_set_text(lbl_load_btn, LV_SYMBOL_REFRESH "  Von WLED laden");
+    lv_obj_set_style_text_font(lbl_load_btn, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_color(lbl_load_btn, ui_theme_primary(), 0);
+    lv_obj_center(lbl_load_btn);
+
+    lbl_load_status = lv_label_create(card_dyn);
+    lv_label_set_text(lbl_load_status, "");
+    lv_obj_set_style_text_font(lbl_load_status, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_color(lbl_load_status, ui_theme_muted(), 0);
+    lv_obj_set_pos(lbl_load_status, 248, 152);
+
     ui_update_wled();
+}
+
+// ─── refresh dropdowns after fetch ───────────────────────────────────────────
+
+void ui_wled_refresh_lists(void) {
+    if (dd_effects) {
+        if (state.wled_effects_loaded && state.wled_fx_count > 0) {
+            lv_dropdown_set_options(dd_effects, state.wled_effects_opts.c_str());
+            lv_dropdown_set_selected(dd_effects, (uint16_t)state.wled_fx);
+        } else {
+            lv_dropdown_set_options(dd_effects, "(nicht geladen)");
+        }
+    }
+    if (dd_presets) {
+        if (state.wled_presets_loaded && state.wled_preset_count > 0) {
+            lv_dropdown_set_options(dd_presets, state.wled_presets_opts.c_str());
+        } else {
+            lv_dropdown_set_options(dd_presets, "(keine Szenen)");
+        }
+    }
+    if (lbl_load_status) {
+        if (state.wled_effects_loaded || state.wled_presets_loaded) {
+            char buf[48];
+            snprintf(buf, sizeof(buf), "%d Effekte, %d Szenen", state.wled_fx_count, state.wled_preset_count);
+            lv_label_set_text(lbl_load_status, buf);
+        } else {
+            lv_label_set_text(lbl_load_status, "Fehler");
+        }
+    }
 }
 
 // ─── updater ─────────────────────────────────────────────────────────────────
